@@ -1,6 +1,8 @@
+from numpy.lib.function_base import average
 import xarray as xr
 import numpy as np
 import pandas as pd
+# import statistics
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import cartopy.crs as ccrs                   # import projections
@@ -55,7 +57,7 @@ adcp_files = glob(adcp_dir + 'combined*.nc')
 d_fmt = DateFormatter("%m-%d")   
 legend_properties = {'weight':'semibold','size':'10'}
 
-print(adcp_files)
+# print(adcp_files)
 sd = xr.open_dataset(adcp_files[2])
 
 #sd = sd.isel(trajectory=0).swap_dims({'obs': 'time'})
@@ -83,11 +85,13 @@ v_ws = sd['VWND_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
 ws_lat = sd['latitude'].sel(time=slice('2020-02-15','2020-02-22'))
 ws_lon = sd['longitude'].sel(time=slice('2020-02-15','2020-02-22'))
 
+print(min(cs.T[0].values), max(cs.T[0].values))
+
 fig = plt.subplots(figsize=(18,10))
 ax = plt.subplot(2,1,1)
 wx = ws.time.values
 wx = wx[::20]
-wy = np.ones(len(wx)) * 0.5
+wy = np.ones(len(wx)) * 8
 dx, dy = u_ws[::30], v_ws[::30]
 plt.quiver(wx, wy, dx, dy, pivot='tail', color='g',linewidths=0.005)
 # plt.barbs(wx, wy, dx, dy, barbcolor=['b'])
@@ -95,6 +99,7 @@ plt.quiver(wx, wy, dx, dy, pivot='tail', color='g',linewidths=0.005)
 #            pivot='tail', color='g',linewidths=0.005)
 #plt.barbs(ws.time.values, ws.values*1.944,u_ws.values,v_ws.values, barbcolor=['b'])
 #plt.plot(sal_sbe37.time.values, sal_sbe37.values,color='r',label='SBE37')
+ax.set_ylim(min(ws.values), max(ws.values))
 ax.xaxis.set_major_formatter(d_fmt)
 ax.set_ylabel("Wind Speed (m/s)", fontsize=15, fontweight='semibold')
 plt.tick_params(axis='both', which='major', labelsize=15)
@@ -106,13 +111,14 @@ ax1 = plt.subplot(2,1,2)
 #plt.quiver(ws_lon.time.values, ws.values,u.values,v.values, pivot='tail', color='g',linewidths=1)
 cx = cs.T[0].time.values
 cx = cx[::20]
-cy = np.ones(len(cx)) * 0.5
+cy = np.ones(len(cx)) * 0.40
 dx, dy = u_cs.T[0][::20], v_cs.T[0][::20]
 plt.quiver(cx, cy, dx, dy, pivot='tail', color='g',linewidths=0.005)
 # plt.quiver(cs.T[0].time.values, cs.T[0].values,u_cs.T[0].values,
 #            v_cs.T[0].values, pivot='tail', color='g',linewidths=0.005)
 #plt.barbs(cs.T[0].time.values, cs.T[0].values,u_cs.T[0].values,
 #           v_cs.T[0].values, color='g',linewidths=0.005)
+ax1.set_ylim(min(cs.T[0].values), max(cs.T[0].values))
 ax1.xaxis.set_major_formatter(d_fmt)
 ax1.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
 ax1.set_ylabel("Current Speed (m/s)", fontsize=15, fontweight='semibold')
