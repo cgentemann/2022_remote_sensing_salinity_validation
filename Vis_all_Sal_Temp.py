@@ -6,9 +6,11 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import cartopy.crs as ccrs                   # import projections
 import cartopy.feature as cf                 # import features
+import cmocean.cm as cmo
 from glob import glob
 from matplotlib.dates import HourLocator, DateFormatter, DayLocator
 from matplotlib.ticker import FormatStrFormatter
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from math import sin, cos, sqrt, atan2, radians, pi
 
 def merge(list1, list2):
@@ -60,6 +62,8 @@ adcp_files = glob(adcp_dir+'combined*.nc')
 rss = xr.open_dataset(files[4], decode_times=False)
 jpl = xr.open_dataset(files[5], decode_times=False)
 sd = xr.open_dataset(adcp_files[2])
+sd['curr_spd'] = np.sqrt(sd.adcp_vel_east**2 + sd.adcp_vel_north**2)
+sd['wspd']=np.sqrt(sd.UWND_MEAN**2+sd.VWND_MEAN**2)
 
 
 #Swap Dimensions
@@ -87,12 +91,26 @@ sal_sbe37 = sd['SAL_SBE37_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
 air_temp = sd['TEMP_AIR_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
 temp_sbe37 = sd['TEMP_SBE37_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
 
-d_fmt = DateFormatter("%m/%d")   
-legend_properties = {'weight':'semibold','size':'10'}
+ws = sd['wspd'].sel(time=slice('2020-02-15','2020-02-22'))
+u_ws = sd['UWND_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
+v_ws = sd['VWND_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
+ws_lat = sd['latitude'].sel(time=slice('2020-02-15','2020-02-22'))
+ws_lon = sd['longitude'].sel(time=slice('2020-02-15','2020-02-22'))
 
-fig = plt.subplots(figsize=(18,10))
+cs = sd['curr_spd'].sel(time=slice('2020-02-15','2020-02-22'))
+u_cs = sd['adcp_vel_east'].sel(time=slice('2020-02-15','2020-02-22'))
+v_cs = sd['adcp_vel_north'].sel(time=slice('2020-02-15','2020-02-22'))
+cs_lat = sd['latitude'].sel(time=slice('2020-02-15','2020-02-22'))
+cs_lon = sd['longitude'].sel(time=slice('2020-02-15','2020-02-22'))
+
+d_fmt = DateFormatter("%m-%d")   
+legend_properties = {'weight':'semibold','size':'10'}
+plt.rcParams['font.weight']='semibold'
+
+fig = plt.subplots(figsize=(25,10))
+
 # Salinity Plot
-ax = plt.subplot(2,1,1)
+ax = plt.subplot(2,2,1)
 # plt.plot(sal_rbr.time.values, sal_rbr.values,color='b',label='RBR')
 plt.plot(sal_sbe37.time.values, sal_sbe37.values,color='r',label='SBE37')
 plt.plot(ss_times[96:126], rss.smap_SSS.values[96:126],color='b',label='RSS')
@@ -108,8 +126,8 @@ plt.grid(True, lw=0.5, ls=':')
 plt.xticks(fontweight='semibold')
 plt.yticks(fontweight='semibold')
 
-#Temperature Plot
-ax1 = plt.subplot(2,1,2)
+#SST and Air Temperature Plot
+ax1 = plt.subplot(2,2,3)
 plt.plot(air_temp.time.values, air_temp.values,color='r')
 ax1.xaxis.set_major_formatter(d_fmt)
 ax1.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
@@ -124,7 +142,7 @@ plt.xticks(fontweight='semibold')
 plt.yticks(fontweight='semibold')
 
 ax2 = ax1.twinx()
-ax2.set_ylabel("Sea \n Surface \n Temperature", color='b', fontsize=15, fontweight='semibold')
+ax2.set_ylabel("Sea Surface Temperature", color='b', fontsize=15, fontweight='semibold')
 plt.plot(temp_sbe37.time.values, temp_sbe37.values,color='b')
 ax2.tick_params(axis='y', labelcolor='b')
 #ax2.set_ylim(min(air_temp.values), max(temp_sbe37.values))
@@ -150,6 +168,62 @@ ax3.set_xlim(min(dist.values), max(dist.values))
 plt.tick_params(axis='both', which='major', labelsize=15)
 ax3.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
 plt.xticks(fontweight='semibold')
+
+#Wind Speed Vectors
+ax4 = plt.subplot(2,2,2)
+wx = ws.time.values
+wx = wx[::20]
+wy = np.ones(len(wx)) * 8
+dx, dy = u_ws[::30], v_ws[::30]
+m = np.sqrt(np.power(dx, 2) + np.power(dy, 2))
+q = plt.quiver(wx, wy, dx, dy, m/max(m), cmap=cmo.thermal, pivot='tail', width=0.0011)
+ax4.set_ylim(min(ws.values), max(ws.values))
+ax4.xaxis.set_major_formatter(d_fmt)
+ax4.set_ylabel("Wind Speed (m/s)", fontsize=15, fontweight='semibold')
+plt.tick_params(axis='both', which='major', labelsize=15)
+plt.grid(True, lw=0.5, ls=':')
+plt.xticks(fontweight='semibold')
+plt.yticks(fontweight='semibold')
+cbaxes = inset_axes(ax4, width='30%', height='3%', loc='upper right')
+plt.colorbar(cax=cbaxes, ticks=[0.5, 0.6, 0.7, 0.8, 0.9, 1.0], orientation='horizontal')
+
+al = [np.linspace(min(m/max(m)).values,max(m/max(m)).values,6)]
+print(al)
+
+#Current Speed Vectors
+ax5 = plt.subplot(2,2,4)
+cx = cs.T[0].time.values
+cx = cx[::20]
+cy = np.ones(len(cx)) * 0.40
+dx, dy = u_cs.T[0][::20], v_cs.T[0][::20]
+m1 = np.sqrt(np.power(dx, 2) + np.power(dy, 2))
+q = plt.quiver(cx, cy, dx, dy, m1/max(m1), cmap=cmo.thermal, pivot='tail', width=0.0011)
+ax5.set_ylim(min(cs.T[0].values), max(cs.T[0].values))
+ax5.xaxis.set_major_formatter(d_fmt)
+ax5.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
+ax5.set_ylabel("Current Speed (m/s)", fontsize=15, fontweight='semibold')
+plt.tick_params(axis='both', which='major', labelsize=15)
+plt.grid(True, lw=0.5, ls=':')
+plt.xticks(fontweight='semibold')
+plt.yticks(fontweight='semibold')
+cbaxes = inset_axes(ax5, width='30%', height='3%', loc='upper right')
+plt.colorbar(cax=cbaxes, ticks=[0.0, 0.25, 0.50, 0.75, 1.0], orientation='horizontal')
+
+ax6 = ax5.twiny()
+ax6.set_xticks(dist.values)
+newlabel = np.linspace(3600,4600,11)
+ax6.set_xticks(newlabel)
+ax6.set_xticklabels(newlabel)
+ax6.xaxis.set_ticks_position('bottom')
+ax6.xaxis.set_label_position('bottom')
+ax6.spines['bottom'].set_position(('outward', 50))
+ax6.set_xlabel('Distance Travelled (km)', fontsize=15, fontweight='semibold')
+ax6.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+ax6.set_xlim(min(dist.values), max(dist.values))
+plt.tick_params(axis='both', which='major', labelsize=15)
+ax3.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+plt.xticks(fontweight='semibold')
+
 
 plt.savefig(PNG +' Salinity_Temperature_Time_Series.png'
             , dpi=150, facecolor='w', edgecolor='w',
