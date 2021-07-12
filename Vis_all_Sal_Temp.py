@@ -107,14 +107,15 @@ d_fmt = DateFormatter("%m-%d")
 legend_properties = {'weight':'semibold','size':'10'}
 plt.rcParams['font.weight']='semibold'
 
-fig = plt.subplots(figsize=(25,10))
+fig = plt.subplots(figsize=(15,15))
 
 # Salinity Plot
-ax = plt.subplot(2,2,1)
+ax = plt.subplot(4,1,1)
 # plt.plot(sal_rbr.time.values, sal_rbr.values,color='b',label='RBR')
 plt.plot(sal_sbe37.time.values, sal_sbe37.values,color='r',label='SBE37')
 plt.plot(ss_times[96:126], rss.smap_SSS.values[96:126],color='b',label='RSS')
 plt.plot(jp_times[134:173], jpl.smap_SSS.values[134:173],color='g',label='JPL')
+plt.text(sal_sbe37.time.values[-1], 34, 'a)', color='k', style='normal',fontsize='15')
 # ax.xaxis.set_major_formatter(d_fmt)
 #ax.set_xlabel("Time mm-dd (UTC)", fontsize=15, fontweight='semibold')
 ax.set_ylabel("Salinity (psu)", fontsize=15, fontweight='semibold')
@@ -127,10 +128,11 @@ plt.xticks(fontweight='semibold')
 plt.yticks(fontweight='semibold')
 
 #SST and Air Temperature Plot
-ax1 = plt.subplot(2,2,3)
+ax1 = plt.subplot(4,1,2)
 plt.plot(air_temp.time.values, air_temp.values,color='r')
+plt.text(air_temp.time.values[-1], 25, 'b)', color='k', style='normal',fontsize='15')
 ax1.xaxis.set_major_formatter(d_fmt)
-ax1.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
+# ax1.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
 ax1.set_ylabel("Air Temperature", color='r', fontsize=15, fontweight='semibold')
 plt.tick_params(axis='both', which='major', labelsize=15)
 ax1.tick_params(axis='y', labelcolor='r')
@@ -144,6 +146,7 @@ plt.yticks(fontweight='semibold')
 ax2 = ax1.twinx()
 ax2.set_ylabel("Sea Surface Temperature", color='b', fontsize=15, fontweight='semibold')
 plt.plot(temp_sbe37.time.values, temp_sbe37.values,color='b')
+# plt.text(temp_sbe37.time.values[-1], 25, 'b)', color='k', style='normal',fontsize='15')
 ax2.tick_params(axis='y', labelcolor='b')
 #ax2.set_ylim(min(air_temp.values), max(temp_sbe37.values))
 plt.ylim([26.5, max(temp_sbe37.values)])
@@ -152,31 +155,32 @@ plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
 plt.xticks(fontweight='semibold')
 plt.yticks(fontweight='semibold')
 
-ax3 = ax1.twiny()
-ax3.set_xticks(dist.values)
-#plt.plot(dist.values,air_temp.values)
-#newlabel = np.linspace(min(dist.values),max(dist.values),12)
-newlabel = np.linspace(3600,4600,11)
-ax3.set_xticks(newlabel)
-ax3.set_xticklabels(newlabel)
+# ax3 = ax1.twiny()
+# ax3.set_xticks(dist.values)
+# #plt.plot(dist.values,air_temp.values)
+# #newlabel = np.linspace(min(dist.values),max(dist.values),12)
+# newlabel = np.linspace(3600,4600,11)
+# ax3.set_xticks(newlabel)
+# ax3.set_xticklabels(newlabel)
 
-ax3.xaxis.set_ticks_position('bottom')
-ax3.xaxis.set_label_position('bottom')
-ax3.spines['bottom'].set_position(('outward', 50))
-ax3.set_xlabel('Distance Travelled (km)', fontsize=15, fontweight='semibold')
-ax3.set_xlim(min(dist.values), max(dist.values))
-plt.tick_params(axis='both', which='major', labelsize=15)
-ax3.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
-plt.xticks(fontweight='semibold')
+# ax3.xaxis.set_ticks_position('bottom')
+# ax3.xaxis.set_label_position('bottom')
+# ax3.spines['bottom'].set_position(('outward', 50))
+# ax3.set_xlabel('Distance Travelled (km)', fontsize=15, fontweight='semibold')
+# ax3.set_xlim(min(dist.values), max(dist.values))
+# plt.tick_params(axis='both', which='major', labelsize=15)
+# ax3.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+# plt.xticks(fontweight='semibold')
 
 #Wind Speed Vectors
-ax4 = plt.subplot(2,2,2)
+ax4 = plt.subplot(4,1,3)
 wx = ws.time.values
 wx = wx[::20]
 wy = np.ones(len(wx)) * 8
 dx, dy = u_ws[::30], v_ws[::30]
 m = np.sqrt(np.power(dx, 2) + np.power(dy, 2))
 q = plt.quiver(wx, wy, dx, dy, m/max(m), cmap=cmo.thermal, pivot='tail', width=0.0011)
+plt.text(wx[-1], 6, 'c)', color='k', style='normal',fontsize='15')
 ax4.set_ylim(min(ws.values), max(ws.values))
 ax4.xaxis.set_major_formatter(d_fmt)
 ax4.set_ylabel("Wind Speed (m/s)", fontsize=15, fontweight='semibold')
@@ -187,17 +191,18 @@ plt.yticks(fontweight='semibold')
 cbaxes = inset_axes(ax4, width='30%', height='3%', loc='upper right')
 plt.colorbar(cax=cbaxes, ticks=[0.5, 0.6, 0.7, 0.8, 0.9, 1.0], orientation='horizontal')
 
-al = [np.linspace(min(m/max(m)).values,max(m/max(m)).values,6)]
-print(al)
+# al = [np.linspace(min(m/max(m)).values,max(m/max(m)).values,6)]
+# print(al)
 
 #Current Speed Vectors
-ax5 = plt.subplot(2,2,4)
+ax5 = plt.subplot(4,1,4)
 cx = cs.T[0].time.values
 cx = cx[::20]
 cy = np.ones(len(cx)) * 0.40
 dx, dy = u_cs.T[0][::20], v_cs.T[0][::20]
 m1 = np.sqrt(np.power(dx, 2) + np.power(dy, 2))
 q = plt.quiver(cx, cy, dx, dy, m1/max(m1), cmap=cmo.thermal, pivot='tail', width=0.0011)
+plt.text(cx[-1], 0.2, 'd)', color='k', style='normal',fontsize='15')
 ax5.set_ylim(min(cs.T[0].values), max(cs.T[0].values))
 ax5.xaxis.set_major_formatter(d_fmt)
 ax5.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
@@ -221,7 +226,7 @@ ax6.set_xlabel('Distance Travelled (km)', fontsize=15, fontweight='semibold')
 ax6.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
 ax6.set_xlim(min(dist.values), max(dist.values))
 plt.tick_params(axis='both', which='major', labelsize=15)
-ax3.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
+ax6.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
 plt.xticks(fontweight='semibold')
 
 
