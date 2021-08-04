@@ -55,17 +55,27 @@ sat_dir = data_dir + 'sss_collocations_orbital_norepeat/'
 adcp_dir = data_dir + 'with_adcp/'
 PNG = '/home/alton/Github/paper_software/2020_ATOMIC_Salinity/figures/'
 
+#IMPORT HYCOM DATA
+#data directory for HYCOM data
+hycom_dir1 = '/home/alton/Saildrone/cimh_saildrone/data/Sanola_Hycomm/'
+hycom=xr.open_mfdataset(hycom_dir1+'*nc4',concat_dim='time').isel(depth=0)
+
 files = glob(sat_dir+'saildrone*.nc')
 adcp_files = glob(adcp_dir+'combined*.nc')
 
+
+_, index = np.unique(hycom['time'], return_index=True)
+hycom2=hycom.isel(time=index)
+
 #Open Files
-rss = xr.open_dataset(files[4], decode_times=False)
-jpl = xr.open_dataset(files[5], decode_times=False)
+rss = xr.open_dataset(files[5], decode_times=False)
+jpl = xr.open_dataset(files[4], decode_times=False)
 sd = xr.open_dataset(adcp_files[2])
 sd['curr_spd'] = np.sqrt(sd.adcp_vel_east**2 + sd.adcp_vel_north**2)
 sd['wspd']=np.sqrt(sd.UWND_MEAN**2+sd.VWND_MEAN**2)
-
-
+# print(files[4])
+# print(files[5])
+print(rss)
 #Swap Dimensions
 rss = rss.swap_dims({'ob': 'time'})
 jpl = jpl.swap_dims({'ob': 'time'})
@@ -80,6 +90,15 @@ jpl.time.values = jpl.time.values * ns
 ss_times = [ datetime.datetime(2020, 1, 17, 0, 0) + datetime.timedelta(seconds=s) for s in rss.time.values ]
 jp_times = [ datetime.datetime(2020, 1, 17, 0, 0) + datetime.timedelta(seconds=s) for s in jpl.time.values ]
 
+#change hycom coordinates to match with saildrone(0-359:-180-179)
+hycom_lon=hycom2.assign_coords(longitude=(((hycom2.lon + 180) % 360) - 180))
+hycom2=hycom_lon.swap_dims({'lon':'longitude'})
+
+#remove nans from hycom data
+filled=hycom2.chunk({'time':-1}).interpolate_na(dim="time",method="nearest",fill_value='extrapolate')
+filled2=filled.interpolate_na(dim="lat", method="nearest",fill_value='extrapolate')
+filled3=filled2.interpolate_na(dim="lon", method="nearest",fill_value='extrapolate')
+
 val = merge(sd.latitude.values, sd.longitude.values)
 distan = np.cumsum(calculate_distance(val)) + 1574.29
 times = pd.date_range("2020-01-31 00:00:00", freq="5T", periods=9216)
@@ -90,6 +109,10 @@ sal_rbr = sd['SAL_RBR_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
 sal_sbe37 = sd['SAL_SBE37_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
 air_temp = sd['TEMP_AIR_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
 temp_sbe37 = sd['TEMP_SBE37_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
+
+# interp HYCOM data to saildrone dimensions
+hysal = filled3.interp(lat=sal_sbe37.latitude, longitude=sal_sbe37.longitude, time=sal_sbe37.time, method='nearest')
+hysal2 = hysal.salinity
 
 ws = sd['wspd'].sel(time=slice('2020-02-15','2020-02-22'))
 u_ws = sd['UWND_MEAN'].sel(time=slice('2020-02-15','2020-02-22'))
@@ -113,24 +136,26 @@ fig = plt.subplots(figsize=(15,15))
 ax = plt.subplot(4,1,1)
 # plt.plot(sal_rbr.time.values, sal_rbr.values,color='b',label='RBR')
 plt.plot(sal_sbe37.time.values, sal_sbe37.values,color='r',label='SBE37')
-plt.plot(ss_times[96:126], rss.smap_SSS.values[96:126],color='b',label='RSS')
-plt.plot(jp_times[134:173], jpl.smap_SSS.values[134:173],color='g',label='JPL')
-plt.text(sal_sbe37.time.values[-1], 34, 'a)', color='k', style='normal',fontsize='15')
+plt.plot(ss_times[134:174], rss.smap_SSS.values[134:174],color='c',label='RSS70')
+plt.plot(ss_times[134:174], rss.smap_SSS_40km.values[134:174],color='g',label='RSS40')
+plt.plot(jp_times[96:127], jpl.smap_SSS.values[96:127],color='b',label='JPL')
+plt.text(sal_sbe37.time.values[1], 34, 'a)', color='k', style='normal',fontsize='15')
+plt.plot(hysal2.time.values, hysal2.values, color='m', label='HYCOM')
 # ax.xaxis.set_major_formatter(d_fmt)
 #ax.set_xlabel("Time mm-dd (UTC)", fontsize=15, fontweight='semibold')
 ax.set_ylabel("Salinity (psu)", fontsize=15, fontweight='semibold')
 # ax.set_ylim(min(air_temp.values), max(temp_sbe37.values))
 plt.tick_params(axis='both', which='major', labelsize=15)
-plt.legend(loc='best', prop=legend_properties)
+plt.legend(loc='lower right', prop=legend_properties)
 plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
 plt.grid(True, lw=0.5, ls=':')
 plt.xticks(fontweight='semibold')
 plt.yticks(fontweight='semibold')
 
-#SST and Air Temperature Plot
+# #SST and Air Temperature Plot
 ax1 = plt.subplot(4,1,2)
 plt.plot(air_temp.time.values, air_temp.values,color='r')
-plt.text(air_temp.time.values[-1], 25, 'b)', color='k', style='normal',fontsize='15')
+plt.text(air_temp.time.values[1], 25, 'b)', color='k', style='normal',fontsize='15')
 ax1.xaxis.set_major_formatter(d_fmt)
 # ax1.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
 ax1.set_ylabel("Air Temperature", color='r', fontsize=15, fontweight='semibold')
@@ -180,7 +205,7 @@ wy = np.ones(len(wx)) * 8
 dx, dy = u_ws[::30], v_ws[::30]
 m = np.sqrt(np.power(dx, 2) + np.power(dy, 2))
 q = plt.quiver(wx, wy, dx, dy, m/max(m), cmap=cmo.thermal, pivot='tail', width=0.0011)
-plt.text(wx[-1], 6, 'c)', color='k', style='normal',fontsize='15')
+plt.text(wx[1], 6, 'c)', color='k', style='normal',fontsize='15')
 ax4.set_ylim(min(ws.values), max(ws.values))
 ax4.xaxis.set_major_formatter(d_fmt)
 ax4.set_ylabel("Wind Speed (m/s)", fontsize=15, fontweight='semibold')
@@ -202,7 +227,7 @@ cy = np.ones(len(cx)) * 0.40
 dx, dy = u_cs.T[0][::20], v_cs.T[0][::20]
 m1 = np.sqrt(np.power(dx, 2) + np.power(dy, 2))
 q = plt.quiver(cx, cy, dx, dy, m1/max(m1), cmap=cmo.thermal, pivot='tail', width=0.0011)
-plt.text(cx[-1], 0.2, 'd)', color='k', style='normal',fontsize='15')
+plt.text(cx[1], 0.2, 'd)', color='k', style='normal',fontsize='15')
 ax5.set_ylim(min(cs.T[0].values), max(cs.T[0].values))
 ax5.xaxis.set_major_formatter(d_fmt)
 ax5.set_xlabel("Date (mm-dd)", fontsize=15, fontweight='semibold')
