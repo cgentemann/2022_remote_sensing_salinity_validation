@@ -1,4 +1,4 @@
-## 2020 Remote Sensing Paper (submitted 8/21/2021)
+## 2021 Remote Sensing Paper (submitted 8/21/2021)
 ### Validating salinity from SMAP with saildrones and research 2 vessel data during EUREC4A-OA/ATOMIC
 Kashawn Hall, Alton Daley, Shanice Whitehall, Sanola Sandiford, and Chelle L. Gentemann
 
